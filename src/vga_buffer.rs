@@ -46,10 +46,17 @@ struct ScreenChar {
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
+// 引入Volatile包, 它提供了read和write方法,
+// 该方法保证读写操作不会被编译器优化
+use volatile::Volatile;
+
 #[repr(transparent)]
 // 描述了整个字符缓冲区
 struct Buffer {
-    chars: [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    // chars: [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    // 使用volatile提供的方法重写VGA的写入
+    // 同时使用泛型, 防止意外的写入数据
+    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 // 将字符写入屏幕的最后一行,
@@ -76,10 +83,15 @@ impl Writer {
                 let col = self.column_position;
 
                 let color_code = self.color_code;
-                self.buffer.chars[row][col] = ScreenChar {
+                // self.buffer.chars[row][col] = ScreenChar {
+                //     ascii_character: byte,
+                //     color_code,
+                // };
+                // 使用volatile提供的write方法
+                self.buffer.chars[row][col].write(ScreenChar {
                     ascii_character: byte,
                     color_code,
-                };
+                });
                 self.column_position += 1;
             }
         }
@@ -96,19 +108,103 @@ impl Writer {
         }
     }
 
+    // 实现换行方法
     fn new_line(&mut self) {
-        // TODO
+        for row in 1..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                // 读取从第一行开始的数据
+                let character = self.buffer.chars[row][col].read();
+                // 将该数据替换到上一行
+                self.buffer.chars[row - 1][col].write(character);
+            }
+        }
+        // 清空最后一行的数据
+        self.clear_row(BUFFER_HEIGHT - 1);
+        self.column_position = 0;
     }
 
-    pub fn print_sth() {
-        let mut writer = Writer {
-            column_position: 0,
-            color_code: ColorCode::new(Color::LightGray, Color::Black),
-            buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    fn clear_row(&mut self, row: usize) {
+        // 定义一个空字符
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code,
         };
 
-        writer.write_byte(b'H');
-        writer.write_string("ello ");
-        writer.write_string("World!");
+        // 将指定行替换为空字符
+        for col in 0..BUFFER_WIDTH {
+            self.buffer.chars[row][col].write(blank);
+        }
     }
+
+    // 这是一个简单的测试实例, 大概现在没有用了
+    // pub fn print_sth() {
+    //     use core::fmt::Write;
+    //     let mut writer = Writer {
+    //         column_position: 0,
+    //         color_code: ColorCode::new(Color::LightGray, Color::Black),
+    //         buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    //     };
+
+    //     writer.write_byte(b'H');
+    //     writer.write_string("ello ");
+    //     writer.write_string("World!");
+
+    //     write!(writer, "Here are some numbers: {} and {}", 32, 1.0 / 3.0).unwrap();
+    // }
+}
+
+use core::fmt;
+
+// 为Writer实现core::fmt::Write接口
+// 实现了Rust提供的格式化宏, 便于打印变量
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(()) // 该值属于Result枚举类
+    }
+}
+
+// 创造一个静态的全局变量
+// 静态变量在编译时初始化, ColorCode::new应该转换成const函数, 否则将会报错
+// 我们使用延迟初始化(lazy_static包), 它提供了lazy_static宏,
+// 它使变量不必再编译时初始化, 而在程序运行时执行初始化代码
+use lazy_static::lazy_static;
+// 标准库提供了互斥锁Mutex, 这使我们能便捷的实现同步, 但我们无法使用
+// 我们只能使用简单的自旋锁spinlock, 在一个无限循环中尝试获得这个锁
+use spin::Mutex;
+
+lazy_static! {
+    // 当前变量还是不可变变量, 实际的用处并不大
+    // 静态可变变量被认为是极不安全的, 一些人认为应该删除它们
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::LightGray, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    });
+}
+
+// 此处使用了标准库中类似的代码
+// print宏调用了该模块中实现的方法
+#[macro_export]
+macro_rules! print {
+    // 使用美元符号在宏系统中声明一个变量来匹配该模式的rust代码
+    // 该符号表明这是一个宏变量而不是一个普通变量, 之后的($标识符:捕获方式)将
+    // 输入的东西识别, 其中$crate是个特殊的符号, 表明当前目录
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+}
+
+// println宏调用了print宏
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+// 上面的宏能够在模块外访问, 因此它们也应该能够访问_print函数,
+// 所以这个函数必须是公有的, 但事实上这是一个私有的实现细节, 通过
+// 添加doc(hidden)属性防止在文档中生成该函数
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    use core::fmt::Write;
+    WRITER.lock().write_fmt(args).unwrap();
 }
