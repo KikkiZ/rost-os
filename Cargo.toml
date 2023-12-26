@@ -6,16 +6,35 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [profile.dev]
-panic = "abort"
+# 运行cargo test时需要注释这两行
+# panic = "abort"
 
 [profile.release]
-panic = "abort"
+# panic = "abort"
 
 [dependencies]
 bootloader = "0.9.23"
 volatile = "0.2.6"
 spin = "0.5.2"
+x86_64 = "0.14.2"
+uart_16550 = "0.2.0"
 
 [dependencies.lazy_static]
 version = "1.0"
 features = ["spin_no_std"]
+
+[package.metadata.bootimage]
+# 该参数只在test环境中进行传递
+# iobase和iosize指定了一个io端口, 系统可以通过该端口访问设备
+# 端口位置0fx4, 端口存储器大小4字节
+test-args = [
+    "-device",
+    "isa-debug-exit,iobase=0xf4,iosize=0x04",
+    "-serial",
+    "stdio",
+    # 该配置让qemu窗口在测试环境下打开
+    "-display",
+    "none",
+]
+test-success-exit-code = 33
+test-timeout = 300 # 设置进入死循环的强制推出条件, 单位秒
