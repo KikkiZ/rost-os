@@ -38,3 +38,8 @@ test-args = [
 ]
 test-success-exit-code = 33
 test-timeout = 300 # 设置进入死循环的强制推出条件, 单位秒
+
+[[test]]
+# 在测试中禁用harness标志, 用于决定是否将test runner用于集成测试中
+name = "should_panic"
+harness = false
