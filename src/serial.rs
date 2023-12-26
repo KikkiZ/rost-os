@@ -2,7 +2,6 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 use uart_16550::SerialPort;
 
-// 实现了一个串口模块, 用于将测试信息返回到控制台
 lazy_static! {
     pub static ref SERIAL: Mutex<SerialPort> = {
         let mut serial_port = unsafe { SerialPort::new(0x3f8) };
@@ -11,7 +10,6 @@ lazy_static! {
     };
 }
 
-// 用于串口输出信息
 #[doc(hidden)]
 pub fn _print(args: ::core::fmt::Arguments) {
     use core::fmt::Write;

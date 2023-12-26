@@ -16,7 +16,6 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    // test_main();
     should_fail();
     serial_println!("[test did not panic]");
     exit_qemu(QemuExitCode::Failed);
@@ -41,6 +40,5 @@ pub fn test_runner(tests: &[&dyn Fn()]) {
 
 #[test_case]
 fn should_fail() {
-    // serial_print!("should_fail... ");
     assert_eq!(1, 1);
 }
