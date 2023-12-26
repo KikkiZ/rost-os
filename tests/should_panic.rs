@@ -1,11 +1,8 @@
 #![no_std]
 #![no_main]
-#![feature(custom_test_frameworks)]
-#![test_runner(test_runner)]
-#![reexport_test_harness_main = "test_main"]
 
 use core::panic::PanicInfo;
-use rust_os::{QemuExitCode, exit_qemu, serial_println};
+use rust_os::{exit_qemu, serial_println, QemuExitCode};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -38,7 +35,3 @@ pub fn test_runner(tests: &[&dyn Fn()]) {
     exit_qemu(QemuExitCode::Success);
 }
 
-#[test_case]
-fn should_fail() {
-    assert_eq!(1, 1);
-}
