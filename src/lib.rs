@@ -16,8 +16,11 @@ pub mod vga_buffer;
 
 // 在lib.rs中初始化可以让所有的_start共享初始化逻辑
 pub fn init() {
-    gdt::init();            // 初始化gdt
+    gdt::init(); // 初始化gdt
     interrupts::init_idt(); // 初始化idt
+    unsafe { interrupts::PICS.lock().initialize() };
+    // 开启中断
+    x86_64::instructions::interrupts::enable();
 }
 
 pub trait Testable {
@@ -47,7 +50,7 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]\n");
     serial_println!("Error: {}\n", info);
     exit_qemu(QemuExitCode::Failed);
-    loop {}
+    hlt_loop();
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,13 +69,21 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
     }
 }
 
+// 在_start和panic函数的末尾进入了死循环, 这回大量浪费CPU资源
+// 使用hlt指令进入一个相对节能的无限循环
+pub fn hlt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
+}
+
 // 测试入口
 #[cfg(test)]
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
     init();
     test_main();
-    loop {}
+    hlt_loop();
 }
 
 #[cfg(test)]
