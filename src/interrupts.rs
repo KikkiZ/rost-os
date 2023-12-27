@@ -1,11 +1,17 @@
+use crate::gdt;
 use crate::println;
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 use lazy_static::lazy_static;
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
-lazy_static !{
+lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
+        // idt.double_fault.set_handler_fn(double_fault_handler);
+        unsafe {
+            idt.double_fault.set_handler_fn(double_fault_handler)
+                .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
+        }
         idt
     };
 }
@@ -30,6 +36,16 @@ pub fn init_idt() {
 // x86-interrupt不是稳定的特性, 需要在lib.rs中手动添加
 extern "x86-interrupt" fn breakpoint_handler(stack_fram: InterruptStackFrame) {
     println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_fram);
+}
+
+// double_fault是永远没有返回值的,
+// x86_64不允许从该异常中返回任何东西
+// double_fault是CPU执行错误处理函数失败时抛出的异常
+extern "x86-interrupt" fn double_fault_handler(
+    stack_fram: InterruptStackFrame,
+    _error_code: u64,
+) -> ! {
+    panic!("EXCEPTION: BREAKPOINT\n{:#?}", stack_fram);
 }
 
 #[test_case]

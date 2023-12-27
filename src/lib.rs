@@ -9,14 +9,15 @@
 
 use core::panic::PanicInfo;
 
+pub mod gdt;
+pub mod interrupts;
 pub mod serial;
 pub mod vga_buffer;
-pub mod interrupts;
 
 // 在lib.rs中初始化可以让所有的_start共享初始化逻辑
 pub fn init() {
-    // 初始化idt
-    interrupts::init_idt();
+    gdt::init();            // 初始化gdt
+    interrupts::init_idt(); // 初始化idt
 }
 
 pub trait Testable {
