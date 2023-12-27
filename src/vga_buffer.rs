@@ -142,10 +142,6 @@ pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
-    // 直接锁住资源将可能造成死锁
-    // WRITER.lock().write_fmt(args).unwrap();
-
-    // 使用闭包执行关中断函数, 防止资源分配失败造成死锁
     interrupts::without_interrupts(|| {
         WRITER.lock().write_fmt(args).unwrap();
     });
