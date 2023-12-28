@@ -1,7 +1,7 @@
 use crate::gdt;
 use crate::hlt_loop;
 use crate::print;
-use crate::println;
+use crate::warn;
 use lazy_static::lazy_static;
 use pc_keyboard::DecodedKey;
 use pc_keyboard::HandleControl;
@@ -40,7 +40,7 @@ pub static PICS: spin::Mutex<ChainedPics> =
     spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
 
 extern "x86-interrupt" fn breakpoint_handler(stack_fram: InterruptStackFrame) {
-    println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_fram);
+    warn!("EXCEPTION: BREAKPOINT\n{:#?}", stack_fram);
 }
 
 // 内存越界访问时触发该异常
@@ -50,10 +50,10 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
-    println!("EXCEPTION: PAGE FAULT");
-    println!("Accessed Address: {:?}", Cr2::read());
-    println!("Error Code: {:?}", error_code);
-    println!("{:#?}", stack_frame);
+    warn!("EXCEPTION: PAGE FAULT");
+    warn!("Accessed Address: {:?}", Cr2::read());
+    warn!("Error Code: {:?}", error_code);
+    warn!("{:#?}", stack_frame);
 
     hlt_loop();
 }

@@ -9,6 +9,11 @@ lazy_static! {
         color_code: ColorCode::new(Color::LightGray, Color::Black),
         buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
     });
+    pub static ref WARN: Mutex<Writer> = Mutex::new(Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    });
 }
 
 #[allow(dead_code)]
@@ -128,7 +133,7 @@ impl fmt::Write for Writer {
 
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*), $crate::vga_buffer::PrintType::PRINT));
 }
 
 #[macro_export]
@@ -137,13 +142,25 @@ macro_rules! println {
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }
 
+#[macro_export]
+macro_rules! warn {
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(
+        format_args!("{}\n", format_args!($($arg)*)), $crate::vga_buffer::PrintType::WARNING));
+}
+
+pub enum PrintType {
+    PRINT,
+    WARNING,
+}
+
 #[doc(hidden)]
-pub fn _print(args: fmt::Arguments) {
+pub fn _print(args: fmt::Arguments, print_type: PrintType) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
 
-    interrupts::without_interrupts(|| {
-        WRITER.lock().write_fmt(args).unwrap();
+    interrupts::without_interrupts(|| match print_type {
+        PrintType::PRINT => WRITER.lock().write_fmt(args).unwrap(),
+        PrintType::WARNING => WARN.lock().write_fmt(args).unwrap(),
     });
 }
 

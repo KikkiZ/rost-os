@@ -18,14 +18,17 @@ pub extern "C" fn _start() -> ! {
     println!("Hello World{}", "!");
     println!("Hello RUST!");
 
+    use rust_os::warn;
+    warn!("test warn");
+
     rust_os::init(); // 初始化
 
     // 测试页表错误
-    // let ptr = 0xdeadbeaf as *mut u8;
-    // unsafe { *ptr = 42; }
-    use x86_64::registers::control::Cr3;
-    let (level_4_page_table, _) = Cr3::read();
-    println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
+    let ptr = 0xdeadbeaf as *mut u8;
+    unsafe { *ptr = 42; }
+    // use x86_64::registers::control::Cr3;
+    // let (level_4_page_table, _) = Cr3::read();
+    // println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
 
     #[cfg(test)]
     test_main();
