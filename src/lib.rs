@@ -9,15 +9,16 @@ use core::panic::PanicInfo;
 
 pub mod gdt;
 pub mod interrupts;
+pub mod memory;
 pub mod serial;
 pub mod vga_buffer;
 
 // 在lib.rs中初始化可以让所有的_start共享初始化逻辑
 pub fn init() {
-    gdt::init();                                     // 初始化gdt
-    interrupts::init_idt();                          // 初始化idt
+    gdt::init(); // 初始化gdt
+    interrupts::init_idt(); // 初始化idt
     unsafe { interrupts::PICS.lock().initialize() };
-    x86_64::instructions::interrupts::enable();      // 开启中断
+    x86_64::instructions::interrupts::enable(); // 开启中断
 }
 
 pub trait Testable {
@@ -73,12 +74,25 @@ pub fn hlt_loop() -> ! {
 }
 
 #[cfg(test)]
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+use bootloader::{entry_point, BootInfo};
+
+#[cfg(test)]
+entry_point!(test_kernel);
+
+#[cfg(test)]
+fn test_kernel(_boot_info: &'static BootInfo) -> ! {
     init();
     test_main();
     hlt_loop();
 }
+
+// #[cfg(test)]
+// #[no_mangle]
+// pub extern "C" fn _start() -> ! {
+//     init();
+//     test_main();
+//     hlt_loop();
+// }
 
 #[cfg(test)]
 #[panic_handler]

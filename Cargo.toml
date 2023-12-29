@@ -12,17 +12,15 @@ edition = "2021"
 # panic = "abort"
 
 [dependencies]
-bootloader = "0.9.23"
+lazy_static = { version = "1.0", features = ["spin_no_std"] }
+# 启用这个特性将整个物理内存映射到未使用的虚拟地址范围, 并将信息传递给内核
+bootloader = { version = "0.9.23", features = ["map_physical_memory"] }
 volatile = "0.2.6"
 spin = "0.5.2"
 x86_64 = "0.14.2"
 uart_16550 = "0.2.0"
 pic8259 = "0.10.1"
 pc-keyboard = "0.5.0"
-
-[dependencies.lazy_static]
-version = "1.0"
-features = ["spin_no_std"]
 
 [package.metadata.bootimage]
 test-args = [
