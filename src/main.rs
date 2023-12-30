@@ -5,8 +5,9 @@
 #![reexport_test_harness_main = "test_main"]
 
 use bootloader::{entry_point, BootInfo};
+use x86_64::{VirtAddr, structures::paging::Page};
 use core::panic::PanicInfo;
-use rust_os::{memory::BootInfoFrameAllocator, println};
+use rust_os::{memory::{BootInfoFrameAllocator, self}, println};
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -27,19 +28,19 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     rust_os::init(); // 初始化
 
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
 
-    // let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    // let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    let mut mapper = unsafe { memory::init(phys_mem_offset) };
     // let mut frame_allocator = memory::EmptyFrameAllocator;
 
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
     // 映射未使用的页
-    // let page = Page::containing_address(VirtAddr::new(0));
-    // memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
+    let page = Page::containing_address(VirtAddr::new(0));
+    memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
 
     // 通过新的映射将字符串 `New!`  写到屏幕上。
-    // let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
-    // unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e)};
+    let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
+    unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e)};
 
     // let phys_men_offset = VirtAddr::new(boot_info.physical_memory_offset);
     // let mapper = unsafe { memory::init(phys_men_offset) };
