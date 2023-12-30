@@ -5,8 +5,12 @@
 #![reexport_test_harness_main = "test_main"]
 #![feature(abi_x86_interrupt)]
 
+// 该crate不包含在标准库中, 但它在no_std环境下处于默认禁用状态
+extern crate alloc;
+
 use core::panic::PanicInfo;
 
+pub mod allocator;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;

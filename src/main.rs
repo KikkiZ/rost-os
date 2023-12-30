@@ -4,10 +4,17 @@
 #![test_runner(rust_os::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+extern crate alloc;
+
+use alloc::{boxed::Box, vec, vec::Vec, rc::Rc};
 use bootloader::{entry_point, BootInfo};
-use x86_64::{VirtAddr, structures::paging::Page};
 use core::panic::PanicInfo;
-use rust_os::{memory::{BootInfoFrameAllocator, self}, println};
+use rust_os::{
+    allocator,
+    memory::{self, BootInfoFrameAllocator},
+    println,
+};
+use x86_64::{structures::paging::Page, VirtAddr};
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -28,19 +35,38 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     rust_os::init(); // 初始化
 
-
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     // let mut frame_allocator = memory::EmptyFrameAllocator;
-
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
+
+    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization faild");
+
     // 映射未使用的页
     let page = Page::containing_address(VirtAddr::new(0));
     memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
 
     // 通过新的映射将字符串 `New!`  写到屏幕上。
     let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
-    unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e)};
+    unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e) };
+
+    // 这里堆内存分配失败, 原因是我们写得内存分配并没有真的实现
+    // 借用外部的分配器, 我们完成了分配, 并进行测试
+    let x = Box::new(22);
+    println!("{}", x);
+
+    let mut vec = Vec::new();
+    for i in 0..500 {
+        vec.push(i);
+    }
+    println!("vec at {:p}", vec.as_slice());
+
+    let reference_counted = Rc::new(vec![1, 2, 3]);
+    let cloned_reference = reference_counted.clone();
+    println!("current reference count is {}", Rc::strong_count(&cloned_reference));
+    core::mem::drop(reference_counted);
+    println!("reference count is {} now", Rc::strong_count(&cloned_reference));
+
 
     // let phys_men_offset = VirtAddr::new(boot_info.physical_memory_offset);
     // let mapper = unsafe { memory::init(phys_men_offset) };
