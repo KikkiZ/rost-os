@@ -48,7 +48,6 @@ impl LinkedListAllocator {
         assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
         assert!(size >= mem::size_of::<ListNode>());
 
-        // 创建一个新的节点存储新的空闲区间
         let mut node = ListNode::new(size);
         node.next = self.head.next.take();
         let node_ptr = addr as *mut ListNode;
@@ -60,8 +59,6 @@ impl LinkedListAllocator {
     fn find_region(&mut self, size: usize, align: usize) -> Option<(&'static mut ListNode, usize)> {
         let mut current = &mut self.head;
         while let Some(ref mut region) = current.next {
-            // 判断当前节点是否有足够的空间分配, 有则从链表中删除当前节点,
-            // 并返回该区域的起始地址, 否则将current指向下一个节点
             if let Ok(alloc_start) = Self::alloc_from_region(&region, size, align) {
                 let next = region.next.take();
                 let ret = Some((current.next.take().unwrap(), alloc_start));
@@ -73,7 +70,7 @@ impl LinkedListAllocator {
             }
         }
 
-        None // 没有合适的空间时返回None
+        None
     }
 
     // 检查是否具有指定大小的对齐方式和分配空间
@@ -82,18 +79,17 @@ impl LinkedListAllocator {
         let alloc_end = alloc_start.checked_add(size).ok_or(())?;
 
         if alloc_end > region.end_addr() {
-            return Err(()); // 空间太小
+            return Err(());
         }
 
         let excess_size = region.end_addr() - alloc_end;
         if excess_size > 0 && excess_size < mem::size_of::<ListNode>() {
-            return Err(()); // 对齐后空间太小
+            return Err(());
         }
 
         Ok(alloc_start)
     }
 
-    // 调整布局, 确保每一个分配的块都能存储一个ListNode
     fn size_align(layout: Layout) -> (usize, usize) {
         let layout = layout
             .align_to(mem::align_of::<ListNode>()) // 将内存对齐到能够容纳ListNode

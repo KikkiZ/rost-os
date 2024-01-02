@@ -33,16 +33,11 @@ pub fn init_heap(
     };
 
     for page in page_range {
-        // 使用x86_64crate提供的FrameAllocator分配内存帧,
-        // ok_or将分配的结果转换为Result<Frame, MapToError>类型
         let frame = frame_allocator
             .allocate_frame()
             .ok_or(MapToError::FrameAllocationFailed)?;
-        // 判断可用和可写的标志
         let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
 
-        // 在页表中创建新的映射项, 
-        // 将页面信息, 页框, 标志, 分配器传进去, 返回更改了的页面, 并进行刷新
         unsafe { mapper.map_to(page, frame, flags, frame_allocator)?.flush() };
     }
 
@@ -56,7 +51,6 @@ pub fn init_heap(
 
 pub struct Dummy;
 
-// 创建了一个虚假的分配器, 不具有实际意义
 unsafe impl GlobalAlloc for Dummy {
     unsafe fn alloc(&self, _layout: core::alloc::Layout) -> *mut u8 {
         null_mut()
@@ -67,8 +61,6 @@ unsafe impl GlobalAlloc for Dummy {
     }
 }
 
-// 可以用来包装各种类型, 提供了一个简单的构造函数用于包装给定的值
-// 在此处主要是用来包装各种堆内存分配器, 以便实现内部可变性
 pub struct Locked<T> {
     inner: spin::Mutex<T>,
 }

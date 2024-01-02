@@ -6,7 +6,6 @@
 #![feature(abi_x86_interrupt)]
 #![feature(const_mut_refs)]
 
-// 该crate不包含在标准库中, 但它在no_std环境下处于默认禁用状态
 extern crate alloc;
 
 use core::panic::PanicInfo;
@@ -21,21 +20,14 @@ pub mod serial;
 pub mod vga_buffer;
 
 #[global_allocator]
-// 使用现有的crate来实现分配器
-// static ALLOCATOR: LockedHeap = LockedHeap::empty();
-// 使用自定义的Bump分配器
-// static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
-// 使用自定义的LinkedList分配器
-// static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
 // 使用自定义的FixedSizeBlock分配器
 static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
 
-// 在lib.rs中初始化可以让所有的_start共享初始化逻辑
 pub fn init() {
-    gdt::init(); // 初始化gdt
-    interrupts::init_idt(); // 初始化idt
+    gdt::init();
+    interrupts::init_idt();
     unsafe { interrupts::PICS.lock().initialize() };
-    x86_64::instructions::interrupts::enable(); // 开启中断
+    x86_64::instructions::interrupts::enable();
 }
 
 pub trait Testable {
@@ -102,14 +94,6 @@ fn test_kernel(_boot_info: &'static BootInfo) -> ! {
     test_main();
     hlt_loop();
 }
-
-// #[cfg(test)]
-// #[no_mangle]
-// pub extern "C" fn _start() -> ! {
-//     init();
-//     test_main();
-//     hlt_loop();
-// }
 
 #[cfg(test)]
 #[panic_handler]
