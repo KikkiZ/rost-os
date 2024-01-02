@@ -1,7 +1,3 @@
-use crate::gdt;
-use crate::hlt_loop;
-use crate::print;
-use crate::warn;
 use lazy_static::lazy_static;
 use pc_keyboard::DecodedKey;
 use pc_keyboard::HandleControl;
@@ -11,6 +7,11 @@ use pic8259::ChainedPics;
 use spin;
 use x86_64::structures::idt::PageFaultErrorCode;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+
+use crate::gdt;
+use crate::hlt_loop;
+use crate::print;
+use crate::warn;
 
 lazy_static! {
     static ref IDT: InterruptDescriptorTable = {

@@ -6,15 +6,17 @@
 
 extern crate alloc;
 
-use alloc::{boxed::Box, vec, vec::Vec, rc::Rc};
+use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
+
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
+use x86_64::{structures::paging::Page, VirtAddr};
+
 use rust_os::{
     allocator,
     memory::{self, BootInfoFrameAllocator},
     println,
 };
-use x86_64::{structures::paging::Page, VirtAddr};
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -63,10 +65,15 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     let reference_counted = Rc::new(vec![1, 2, 3]);
     let cloned_reference = reference_counted.clone();
-    println!("current reference count is {}", Rc::strong_count(&cloned_reference));
+    println!(
+        "current reference count is {}",
+        Rc::strong_count(&cloned_reference)
+    );
     core::mem::drop(reference_counted);
-    println!("reference count is {} now", Rc::strong_count(&cloned_reference));
-
+    println!(
+        "reference count is {} now",
+        Rc::strong_count(&cloned_reference)
+    );
 
     // let phys_men_offset = VirtAddr::new(boot_info.physical_memory_offset);
     // let mapper = unsafe { memory::init(phys_men_offset) };
