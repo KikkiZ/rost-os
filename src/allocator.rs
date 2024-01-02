@@ -6,11 +6,10 @@ use x86_64::{
     },
     VirtAddr,
 };
-use linked_list_allocator::LockedHeap;
 
-#[global_allocator]
-// 使用现有的crate来实现分配器
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+pub mod bump;
+pub mod linked_list;
+pub mod fixed_size_block;
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 100 * 1024; // 100KiB
@@ -49,7 +48,7 @@ pub fn init_heap(
 
     // 初始化分配器
     unsafe {
-        ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
+        crate::ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
     }
 
     Ok(())
@@ -67,3 +66,33 @@ unsafe impl GlobalAlloc for Dummy {
         panic!("dealloc should be never called")
     }
 }
+
+// 可以用来包装各种类型, 提供了一个简单的构造函数用于包装给定的值
+// 在此处主要是用来包装各种堆内存分配器, 以便实现内部可变性
+pub struct Locked<T> {
+    inner: spin::Mutex<T>,
+}
+
+impl<T> Locked<T> {
+    pub const fn new(inner: T) -> Self {
+        Locked {
+            inner: spin::Mutex::new(inner),
+        }
+    }
+
+    pub fn lock(&self) -> spin::MutexGuard<T> {
+        self.inner.lock()
+    }
+}
+
+// fn align_up(addr: usize, align: usize) -> usize {
+//     // 该段代码实现了基础功能, 但下面的实现更快速
+//     // let remainder = addr % align;
+//     // if remainder == 0 {
+//     //     addr
+//     // } else {
+//     //     addr - remainder + align
+//     // }
+
+//     (addr + align - 1) & !(align - 1)
+// }

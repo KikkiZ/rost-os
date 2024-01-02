@@ -4,11 +4,14 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(abi_x86_interrupt)]
+#![feature(const_mut_refs)]
 
 // 该crate不包含在标准库中, 但它在no_std环境下处于默认禁用状态
 extern crate alloc;
 
 use core::panic::PanicInfo;
+
+use allocator::{fixed_size_block::FixedSizeBlockAllocator, Locked};
 
 pub mod allocator;
 pub mod gdt;
@@ -16,6 +19,16 @@ pub mod interrupts;
 pub mod memory;
 pub mod serial;
 pub mod vga_buffer;
+
+#[global_allocator]
+// 使用现有的crate来实现分配器
+// static ALLOCATOR: LockedHeap = LockedHeap::empty();
+// 使用自定义的Bump分配器
+// static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
+// 使用自定义的LinkedList分配器
+// static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
+// 使用自定义的FixedSizeBlock分配器
+static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
 
 // 在lib.rs中初始化可以让所有的_start共享初始化逻辑
 pub fn init() {
